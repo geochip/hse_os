@@ -1,0 +1,18 @@
+services:
+  web:
+    image: nginx:1.27
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      net:
+  hello:
+    build: .
+    expose:
+      - "8080"
+    networks:
+      net:
+
+networks:
+  net:
