@@ -77,6 +77,19 @@ Source: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L3089
 
 ## glibc
 
+`fork()` and `__fork()` are actually aliases for `__libc_fork()`
+
+```c
+pid_t
+__libc_fork (void)
+{
+...
+}
+weak_alias (__libc_fork, __fork)
+libc_hidden_def (__fork)
+weak_alias (__libc_fork, fork)
+```
+
 ### `__libc_fork`
 
 https://elixir.bootlin.com/glibc/glibc-2.38/source/posix/fork.c#L40
@@ -248,6 +261,10 @@ So glibc uses clone system call to implement fork()
 ### `__libc_fork`
 
 https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/unix/sysv/linux/fork.c#L37
+https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/pthread/bits/libc-lock.h#L110
+https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/pthread.c#L240
+
+We start at `__libc_fork`. It calls either `__libc_pthread_functions.ptr_pthread_fork (&__fork_block)` or `ARCH_FORK ()`
 
 ```c
 pid_t
@@ -255,6 +272,20 @@ __libc_fork (void)
 {
   return __libc_maybe_call2 (pthread_fork, (&__fork_block), ARCH_FORK ());
 }
+weak_alias (__libc_fork, __fork)
+weak_alias (__libc_fork, fork)
+```
+
+## `pthread_fork`
+
+https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/ptfork.c#L28
+
+`pthread_fork` calls `ARCH_FORK`
+
+```c
+...
+  pid = ARCH_FORK ();
+...
 ```
 
 ### `ARCH_FORK`
@@ -262,6 +293,33 @@ __libc_fork (void)
 - https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/unix/sysv/linux/fork.h#L59
 - https://elixir.bootlin.com/glibc/glibc-2.3.2/source/sysdeps/unix/sysv/linux/x86_64/sysdep.h#L201
 
+`ARCH_FORK` make a syscall with number `__NR_fork` defined by linux kernel.
+
 ```c
 # define ARCH_FORK() INLINE_SYSCALL (fork, 0)
+```
+
+```c
+#define INLINE_SYSCALL(name, nr, args...) \
+  ({									      \
+    unsigned long resultvar = INTERNAL_SYSCALL (name, , nr, args);	      \
+    if (__builtin_expect (INTERNAL_SYSCALL_ERROR_P (resultvar, ), 0))	      \
+      {									      \
+	__set_errno (INTERNAL_SYSCALL_ERRNO (resultvar, ));		      \
+	resultvar = (unsigned long) -1;					      \
+      }									      \
+    (long) resultvar; })
+```
+
+```c
+#define INTERNAL_SYSCALL(name, err, nr, args...) \
+  ({									      \
+    unsigned long resultvar;						      \
+    LOAD_ARGS_##nr (args)						      \
+    asm volatile (							      \
+    "movq %1, %%rax\n\t"						      \
+    "syscall\n\t"							      \
+    : "=a" (resultvar)							      \
+    : "i" (__NR_##name) ASM_ARGS_##nr : "memory", "cc", "r11", "cx");	      \
+    (long) resultvar; })
 ```
