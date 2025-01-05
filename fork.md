@@ -260,9 +260,9 @@ So glibc uses clone system call to implement fork()
 
 ### `__libc_fork`
 
-https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/unix/sysv/linux/fork.c#L37
-https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/pthread/bits/libc-lock.h#L110
-https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/pthread.c#L240
+- https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/unix/sysv/linux/fork.c#L37
+- https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/pthread/bits/libc-lock.h#L110
+- https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/pthread.c#L240
 
 We start at `__libc_fork`. It calls either `__libc_pthread_functions.ptr_pthread_fork (&__fork_block)` or `ARCH_FORK ()`
 
