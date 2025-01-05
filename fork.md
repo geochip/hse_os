@@ -72,14 +72,34 @@ Source: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L3089
 ```
 
 ### implementation
-- kernel_clone: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L2765
-- copy_process: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L2138
+- `kernel_clone`: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L2765
+- `copy_process`: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L2138
 
 ## glibc
 
-- __libc_fork: https://elixir.bootlin.com/glibc/glibc-2.38/source/posix/fork.c#L40
-- _Fork: https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/nptl/_Fork.c#L23
-- arch_fork: https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/unix/sysv/linux/arch-fork.h#L35
+### `__libc_fork`
+
+https://elixir.bootlin.com/glibc/glibc-2.38/source/posix/fork.c#L40
+
+```c
+...
+  pid_t pid = _Fork ();
+...
+```
+
+### `_Fork`
+
+https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/nptl/_Fork.c#L23
+
+```c
+...
+  pid_t pid = arch_fork (&THREAD_SELF->tid);
+...
+```
+
+### `arch_fork`
+
+https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/unix/sysv/linux/arch-fork.h#L35
 
 ```c
 /* Call the clone syscall with fork semantic.  The CTID address is used */
@@ -90,7 +110,78 @@ Source: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L3089
 
 ### macro `INLINE_SYSCALL_CALL`
 
-provided by `<sysdep.h>`
+https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/unix/sysv/linux/sysdep.h#L42
+
+```c
+#define INLINE_SYSCALL(name, nr, args...)				\
+  ({									\
+    long int sc_ret = INTERNAL_SYSCALL (name, nr, args);		\
+    __glibc_unlikely (INTERNAL_SYSCALL_ERROR_P (sc_ret))		\
+    ? SYSCALL_ERROR_LABEL (INTERNAL_SYSCALL_ERRNO (sc_ret))		\
+    : sc_ret;								\
+  })
+```
+
+#### macro `INTERNAL_SYSCALL(name, nr, args...)`
+
+https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/unix/sysv/linux/x86_64/sysdep.h#L234
+
+```c
+#define INTERNAL_SYSCALL(name, nr, args...)				\
+	internal_syscall##nr (SYS_ify (name), args)
+```
+
+#### macro `SYS_ify(syscall_name)`
+
+ https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/unix/sysv/linux/x86_64/sysdep.h#L34
+
+```c
+#define SYS_ify(syscall_name)	__NR_##syscall_name
+```
+
+#### `<sys/syscall.h>`
+
+```c
+...
+#define __NR_setsockopt 54
+#define __NR_getsockopt 55
+#define __NR_clone 56
+#define __NR_fork 57
+#define __NR_vfork 58
+#define __NR_execve 59
+#define __NR_exit 60
+...
+```
+
+#### macro `internal_syscall5(number, arg1, arg2, arg3, arg4, arg5)`
+
+https://elixir.bootlin.com/glibc/glibc-2.38/source/sysdeps/unix/sysv/linux/x86_64/sysdep.h#L322
+
+```c
+#define internal_syscall5(number, arg1, arg2, arg3, arg4, arg5)	\
+({									\
+    unsigned long int resultvar;					\
+    TYPEFY (arg5, __arg5) = ARGIFY (arg5);			 	\
+    TYPEFY (arg4, __arg4) = ARGIFY (arg4);			 	\
+    TYPEFY (arg3, __arg3) = ARGIFY (arg3);			 	\
+    TYPEFY (arg2, __arg2) = ARGIFY (arg2);			 	\
+    TYPEFY (arg1, __arg1) = ARGIFY (arg1);			 	\
+    register TYPEFY (arg5, _a5) asm ("r8") = __arg5;			\
+    register TYPEFY (arg4, _a4) asm ("r10") = __arg4;			\
+    register TYPEFY (arg3, _a3) asm ("rdx") = __arg3;			\
+    register TYPEFY (arg2, _a2) asm ("rsi") = __arg2;			\
+    register TYPEFY (arg1, _a1) asm ("rdi") = __arg1;			\
+    asm volatile (							\
+    "syscall\n\t"							\
+    : "=a" (resultvar)							\
+    : "0" (number), "r" (_a1), "r" (_a2), "r" (_a3), "r" (_a4),		\
+      "r" (_a5)								\
+    : "memory", REGISTERS_CLOBBERED_BY_SYSCALL);			\
+    (long int) resultvar;						\
+})
+```
+
+### Result
 
 ```c
 #define INLINE_SYSCALL_CALL(...)                                              \
@@ -151,3 +242,26 @@ clone 56
 ```
 
 So glibc uses clone system call to implement fork()
+
+## glibc 2.3.2 (still uses `__NR_fork`)
+
+### `__libc_fork`
+
+https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/unix/sysv/linux/fork.c#L37
+
+```c
+pid_t
+__libc_fork (void)
+{
+  return __libc_maybe_call2 (pthread_fork, (&__fork_block), ARCH_FORK ());
+}
+```
+
+### `ARCH_FORK`
+
+- https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/sysdeps/unix/sysv/linux/fork.h#L59
+- https://elixir.bootlin.com/glibc/glibc-2.3.2/source/sysdeps/unix/sysv/linux/x86_64/sysdep.h#L201
+
+```c
+# define ARCH_FORK() INLINE_SYSCALL (fork, 0)
+```
