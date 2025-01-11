@@ -276,7 +276,7 @@ weak_alias (__libc_fork, __fork)
 weak_alias (__libc_fork, fork)
 ```
 
-## `pthread_fork`
+### `pthread_fork`
 
 https://elixir.bootlin.com/glibc/glibc-2.3.2/source/linuxthreads/ptfork.c#L28
 
