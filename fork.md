@@ -15,7 +15,7 @@ VERSIONS
 ...
 ```
 
-## linux source code
+## linux source code (6.12.6)
 
 
 ### fork
@@ -75,7 +75,7 @@ Source: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L3089
 - `kernel_clone`: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L2765
 - `copy_process`: https://elixir.bootlin.com/linux/v6.12.6/source/kernel/fork.c#L2138
 
-## glibc
+## glibc 2.38
 
 `fork()` and `__fork()` are actually aliases for `__libc_fork()`
 
